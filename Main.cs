@@ -37,6 +37,9 @@ namespace KyDienTu
                 X509Cert.X509Certificate2Collection filter = store.Certificates.Find(X509Cert.X509FindType.FindByTimeValid, DateTime.Now, false).Find(X509Cert.X509FindType.FindByKeyUsage, X509Cert.X509KeyUsageFlags.NonRepudiation, false);
                 X509Cert.X509Certificate2Collection selected = X509Cert.X509Certificate2UI.SelectFromCollection(
                 filter, "Select Certificate", "Choose your USB Token Certificate", X509Cert.X509SelectionFlag.SingleSelection);
+                //X509Cert.X509Certificate2Collection filter = store.Certificates.Find(X509Cert.X509FindType.FindByTimeValid, DateTime.Now, false).Find(X509Cert.X509FindType.FindByKeyUsage, X509Cert.X509KeyUsageFlags.NonRepudiation, false);
+                //X509Cert.X509Certificate2Collection selected = X509Cert.X509Certificate2UI.SelectFromCollection(
+                //store.Certificates, "Select Certificate", "Choose your USB Token Certificate", X509Cert.X509SelectionFlag.SingleSelection);
 
                 if (selected.Count > 0)
                 {
@@ -148,7 +151,7 @@ namespace KyDienTu
                         appearance.SetFontSize((float)numSize.Value);
                         //------------------------------------
                         // Create the signature appearance
-                        
+                        int pos = 0;
 
                         iText.Kernel.Geom.Rectangle rect = new iText.Kernel.Geom.Rectangle(10, height - (100 - 20), 200, 100);
                         if (rdTR.Checked)
@@ -162,6 +165,9 @@ namespace KyDienTu
                         else if (rdBR.Checked)
                         {
                             rect = new iText.Kernel.Geom.Rectangle(width - 210, 10, 200, 100);// Do something
+                        }else if(int.TryParse(posPage,out pos))
+                        {
+                            rect = new iText.Kernel.Geom.Rectangle(customArea.X, customArea.Y, customArea.Width, customArea.Height);
                         }
                         int pageIndex = 1;
                         SignerProperties signerProperties = new SignerProperties()
@@ -181,6 +187,10 @@ namespace KyDienTu
                             {
                                 pageIndex = totalPages;
                                 signerProperties.SetPageNumber(pageIndex);
+                            }
+                            else if (int.TryParse(posPage, out pos))
+                            {
+                                signerProperties.SetPageNumber(pos);
                             }
 
                         }
@@ -289,12 +299,18 @@ namespace KyDienTu
                 // Handle the case when the second radio button is checked
             }
         }
-
+        Rectangle customArea = new Rectangle();
         private void btnCustom_Click(object sender, EventArgs e)
         {
             Custom customForm = new Custom();
             customForm.PDFFile = lblSelected.Text;
             customForm.ShowDialog();
+            if (customForm.SignedArea != null)
+            {
+                customArea = customForm.SignedArea;
+                posPage = customForm.SignedPage.ToString();
+                btnKyDienTu.PerformClick();
+            }
         }
     }
 }
