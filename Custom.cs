@@ -25,46 +25,68 @@ namespace KyDienTu
             InitializeComponent();
         }
         public string PDFFile { get; set; }
+        //public Size SignArea { get; set; }
+        List<PDFPage> lstPage = null;
         public List<System.Drawing.Image> RenderPagesToImages(string pdfPath)
         {
             var images = new List<System.Drawing.Image>();
             // Initialize Docnet engine
-            //int totalPage = 0;
-            //using (PdfDocument pdf = new PdfDocument(new PdfReader(PDFFile)))
-            //{
-            //    totalPage = pdf.GetNumberOfPages();
-            //}
-            //{
-                
+            int totalPage = 0;
+            lstPage = new List<PDFPage>();
             using (FileStream pdfStream = File.OpenRead(pdfPath))
             {
-                IEnumerable<SKBitmap> imgs = Conversion.ToImages(pdfStream,true);
-                for (int pos = 0; pos < imgs.Count(); pos++)
+                List<SKBitmap> imgs = Conversion.ToImages(pdfStream, true).ToList<SKBitmap>();
+                pdfStream.Position = 0;
+                using (PdfDocument pdf = new PdfDocument(new PdfReader(pdfStream)))
                 {
-                    MemoryStream mStream = null;
-                    using (SKData encodedData = imgs.ElementAt(pos).Encode(SKEncodedImageFormat.Jpeg, 100))
+                    totalPage = pdf.GetNumberOfPages();
+                    for (int i = 1; i <= totalPage; i++)
                     {
-                        Stream stream = encodedData.AsStream();
-                        Image img = System.Drawing.Image.FromStream(stream);
-                        images.Add(img);
-                    }
+                        float height = pdf.GetPage(i).GetPageSize().GetHeight();
+                        float width = pdf.GetPage(i).GetPageSize().GetWidth();
+                        using (SKData encodedData = imgs.ElementAt(i-1).Encode(SKEncodedImageFormat.Jpeg, 100))
+                        {
+                            Stream stream = encodedData.AsStream();
+                            Image img = System.Drawing.Image.FromStream(stream);
+                            images.Add(img);
+                            lstPage.Add(new PDFPage { PageSize = new Size((int)width, (int)height), PageIndex = i, PageImage = img });
+                        }
                         
+                    }
                 }
             }
+            //{
+
+            //using (FileStream pdfStream = File.OpenRead(pdfPath))
+            //{
+            //    List<SKBitmap> imgs = Conversion.ToImages(pdfStream,true).ToList<SKBitmap>();
+            //    totalPage = imgs.Count();
+            //    for (int pos = 0; pos < totalPage; pos++)
+            //    {
+            //        using (SKData encodedData = imgs.ElementAt(pos).Encode(SKEncodedImageFormat.Jpeg, 100))
+            //        {
+            //            Stream stream = encodedData.AsStream();
+            //            Image img = System.Drawing.Image.FromStream(stream);
+            //            images.Add(img);
+            //            lstPage[pos].PageImage = img;
+            //        }
+                        
+            //    }
+            //}
                 return images;
         }
         private void Custom_Load(object sender, EventArgs e)
         {
             List<Image> images = RenderPagesToImages(PDFFile);
             int pos = 1;
-            foreach (Image item in images)
+            foreach (PDFPage page in lstPage)
             {
                 PictureBox pictureBox = new PictureBox
                 {
-                    Image = item,
+                    Image = page.PageImage,
                     SizeMode = PictureBoxSizeMode.Zoom,
                     Size = new Size(180, 180),
-                    Tag = pos
+                    Tag = page
 
                 };
                 pictureBox.Click += PictureBox_Click;
@@ -76,10 +98,11 @@ namespace KyDienTu
         private void PictureBox_Click(object sender, EventArgs e)
         {
             picView.Visible = true;
-            picView.Image = ((PictureBox)sender).Image;
-            picView.Size = ((PictureBox)sender).Image.Size;
+            PDFPage page = (PDFPage)((PictureBox)sender).Tag;
+            picView.Image = page.PageImage;
+            picView.Size = new Size(page.PageSize.Width*2, page.PageSize.Height * 2);
             pnlRect.Visible = false;
-            SignedPage = (int)((PictureBox)sender).Tag;
+            SignedPage = (int)page.PageIndex;
         }
         Point start = new Point(0,0);
         Point end = new Point(0, 0);
@@ -88,12 +111,18 @@ namespace KyDienTu
         {
             this.Text = e.Location.ToString();
             Point p = new Point(0, 0);
-            p.Y = e.Y - panel1.VerticalScroll.Value;
-            p.X = e.X - panel1.HorizontalScroll.Value;
+            p.Y = (e.Y - panel1.VerticalScroll.Value);
+            p.X = (e.X - panel1.HorizontalScroll.Value);
             start = p;
             isMouseDown = true;
-            
-            
+            pnlRect.Location = start;
+            //pnlRect.Width = Math.Abs(e.X- panel1.HorizontalScroll.Value - start.X);
+            //pnlRect.Height = Math.Abs(e.Y- panel1.VerticalScroll.Value - start.Y);
+            pnlRect.Width = SignedArea.Width*2;
+            pnlRect.Height = SignedArea.Height*2;
+            this.Text = "W:" + Math.Abs(e.X - panel1.HorizontalScroll.Value - start.X) + "H:" + Math.Abs(e.Y - panel1.VerticalScroll.Value - start.Y);
+            pnlRect.Visible = true;
+
         }
 
         private void picView_MouseUp(object sender, MouseEventArgs e)
@@ -106,26 +135,29 @@ namespace KyDienTu
 
         private void picView_MouseMove(object sender, MouseEventArgs e)
         {
-            if (isMouseDown)
-            {
-                //pnlRect.Location = start;
-                //pnlRect.Width = Math.Abs(e.X- start.X);
-                //pnlRect.Height = Math.Abs(e.Y - start.Y);
-                Point p = new Point(0, 0);
-                p.Y = e.Y - panel1.VerticalScroll.Value;
-                p.X = e.X - panel1.HorizontalScroll.Value;
-                pnlRect.Location = start;
-                pnlRect.Width = Math.Abs(e.X- panel1.HorizontalScroll.Value - start.X);
-                pnlRect.Height = Math.Abs(e.Y- panel1.VerticalScroll.Value - start.Y);
-                this.Text = "W:" + Math.Abs(e.X - panel1.HorizontalScroll.Value - start.X) + "H:"+ Math.Abs(e.Y - panel1.VerticalScroll.Value - start.Y);
-                pnlRect.Visible = true;
-            }
+            //if (isMouseDown)
+            //{
+            //    //pnlRect.Location = start;
+            //    //pnlRect.Width = Math.Abs(e.X- start.X);
+            //    //pnlRect.Height = Math.Abs(e.Y - start.Y);
+            //    Point p = new Point(0, 0);
+            //    p.Y = e.Y - panel1.VerticalScroll.Value;
+            //    p.X = e.X - panel1.HorizontalScroll.Value;
+            //    pnlRect.Location = start;
+            //    //pnlRect.Width = Math.Abs(e.X- panel1.HorizontalScroll.Value - start.X);
+            //    //pnlRect.Height = Math.Abs(e.Y- panel1.VerticalScroll.Value - start.Y);
+            //    pnlRect.Width = SignedArea.Width;
+            //    pnlRect.Height = SignedArea.Height;
+            //    this.Text = "W:" + Math.Abs(e.X - panel1.HorizontalScroll.Value - start.X) + "H:"+ Math.Abs(e.Y - panel1.VerticalScroll.Value - start.Y);
+            //    pnlRect.Visible = true;
+            //}
         }
         public Rectangle SignedArea { get; set; }
         public int SignedPage { get; set; }
         private void pnlRect_Click(object sender, EventArgs e)
         {
-            SignedArea = new Rectangle(pnlRect.Location, pnlRect.Size);
+            SignedArea = new Rectangle(new Point(pnlRect.Location.X/2, (pnlRect.Location.Y+ panel1.VerticalScroll.Value) / 2), new Size(pnlRect.Size.Width/2, pnlRect.Size.Height / 2));
+            this.DialogResult = DialogResult.OK;
         }
     }
 }

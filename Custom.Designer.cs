@@ -40,6 +40,7 @@
             // 
             // thumnailPDF
             // 
+            this.thumnailPDF.AutoScroll = true;
             this.thumnailPDF.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.thumnailPDF.Dock = System.Windows.Forms.DockStyle.Left;
             this.thumnailPDF.Location = new System.Drawing.Point(0, 0);
@@ -53,6 +54,7 @@
             this.picView.Location = new System.Drawing.Point(0, 0);
             this.picView.Name = "picView";
             this.picView.Size = new System.Drawing.Size(425, 516);
+            this.picView.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
             this.picView.TabIndex = 1;
             this.picView.TabStop = false;
             this.picView.Visible = false;
@@ -75,10 +77,11 @@
             // 
             // pnlRect
             // 
-            this.pnlRect.BackColor = System.Drawing.Color.Transparent;
+            this.pnlRect.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(255)))), ((int)(((byte)(192)))));
             this.pnlRect.BackgroundImageLayout = System.Windows.Forms.ImageLayout.None;
-            this.pnlRect.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.pnlRect.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D;
             this.pnlRect.Controls.Add(this.label1);
+            this.pnlRect.Font = new System.Drawing.Font("Microsoft Sans Serif", 9.75F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.pnlRect.Location = new System.Drawing.Point(252, 417);
             this.pnlRect.Name = "pnlRect";
             this.pnlRect.Size = new System.Drawing.Size(106, 34);
@@ -90,9 +93,9 @@
             // 
             this.label1.Anchor = System.Windows.Forms.AnchorStyles.None;
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(6, 10);
+            this.label1.Location = new System.Drawing.Point(5, 9);
             this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(96, 13);
+            this.label1.Size = new System.Drawing.Size(138, 16);
             this.label1.TabIndex = 0;
             this.label1.Text = "Click on for signing";
             this.label1.Click += new System.EventHandler(this.pnlRect_Click);

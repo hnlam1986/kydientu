@@ -7,6 +7,7 @@ using iText.Kernel.Colors;
 using iText.Kernel.Crypto;
 using iText.Kernel.Font;
 using iText.Kernel.Pdf;
+using iText.Layout.Element;
 using iText.Signatures;
 using Org.BouncyCastle.Asn1.X509;
 using Org.BouncyCastle.X509;
@@ -80,6 +81,10 @@ namespace KyDienTu
                         MessageBox.Show("Ký số thành công!");
                     }
                 }
+                else
+                {
+                    MessageBox.Show("Please check In-Out configuration!");
+                }
             
             }
             catch (Exception ex)
@@ -89,6 +94,28 @@ namespace KyDienTu
         }
         X509Cert.X509Certificate2 usbCert = null;
         X509Certificate[] chain = null;
+
+        private DigitallySignatureData GetUsbDigitalData()
+        {
+            if (usbCert == null)
+            {
+                usbCert = GetCertificateFromStore();
+
+                
+            }
+            
+                var bcCertParser = new X509CertificateParser();
+                X509Certificate bcCert = bcCertParser.ReadCertificate(usbCert.RawData);
+                chain = new[] { bcCert };
+                string commonName = chain[0].SubjectDN.GetValueList(X509Name.CN).Cast<string>().FirstOrDefault() ?? string.Empty;
+                string email = chain[0].SubjectDN.GetValueList(X509Name.E).Cast<string>().FirstOrDefault() ?? string.Empty;
+                return new DigitallySignatureData
+                {
+                    CommonName = commonName,
+                    Email = email
+                };
+            
+        }
         private void SignPdf(string srcPdf, string destFolder, string posPage)
         {
 
@@ -127,48 +154,63 @@ namespace KyDienTu
                         string email = chain[0].SubjectDN.GetValueList(X509Name.E).Cast<string>().FirstOrDefault() ?? string.Empty;
 
                         //-------------------------------------------------
-                        SignedAppearanceText appearanceText = new SignedAppearanceText();
+                        //SignedAppearanceText appearanceText = new SignedAppearanceText();
                         SignatureFieldAppearance appearance = new SignatureFieldAppearance("app");
                         string signatureText = "";
                         if (chkName.Checked)
                         {
-                            signatureText = txtName.Text+"\t" + commonName + "\n";
+                            signatureText = txtName.Text+"" + commonName + "\n";
                         }
                         if (chkDate.Checked)
                         {
-                            signatureText = signatureText + txtDate.Text+"\t" + DateTime.Now.ToString("dd / MM / yyyy hh: mm: ss") + "\n";
+                            signatureText = signatureText + txtDate.Text+"" + DateTime.Now.ToString("dd/MM/yyyy hh: mm: ss") + "\n";
                         }
                         if (chkEmail.Checked)
                         {
-                            signatureText = signatureText +txtEmail.Text +"\t" + email;
+                            signatureText = signatureText +txtEmail.Text +"" + email;
                         }
-                        appearance.SetContent(signatureText);
+                        Div contentWrapper = new Div();
+                        contentWrapper.SetPaddingLeft(10f);
+                        //contentWrapper.SetBackgroundColor(ColorConstants.RED);
+                        contentWrapper.SetHeight((float)numHeightSignArea.Value);
+                        contentWrapper.SetWidth((float)numWidthSignArea.Value);
+                        Paragraph signatureDetails = new Paragraph(signatureText);
+                        signatureDetails.SetFontSize((float)numSize.Value);
+                        //contentWrapper.SetFixedPosition(customArea.Width/2-100, customArea.Height / 2- (70/2), 200);
+
+                        contentWrapper.Add(signatureDetails);
+
+                        appearance.SetContent(contentWrapper);
                         PdfFont font = PdfFontFactory.CreateFont("c:/windows/fonts/arial.ttf", PdfEncodings.IDENTITY_H);
                         appearance.SetFont(font);
                         System.Drawing.Color systemColor = pnlColor.BackColor;
                         iText.Kernel.Colors.Color iColor = new DeviceRgb(systemColor.R, systemColor.G, systemColor.B);
                         appearance.SetFontColor(iColor);
                         appearance.SetFontSize((float)numSize.Value);
+                        //appearance.SetBackgroundColor(ColorConstants.YELLOW);
+                        //appearance.Set
+                        
                         //------------------------------------
                         // Create the signature appearance
                         int pos = 0;
 
-                        iText.Kernel.Geom.Rectangle rect = new iText.Kernel.Geom.Rectangle(10, height - (100 - 20), 200, 100);
+                        iText.Kernel.Geom.Rectangle rect = new iText.Kernel.Geom.Rectangle(10, height - ((float)numHeightSignArea.Value), (float)numWidthSignArea.Value, (float)numHeightSignArea.Value);
                         if (rdTR.Checked)
                         {
-                            rect = new iText.Kernel.Geom.Rectangle(width - 210, height - (100 - 20), 200, 100);// Do something
+                            rect = new iText.Kernel.Geom.Rectangle(width - (float)numWidthSignArea.Value, height - ((float)numHeightSignArea.Value ), (float)numWidthSignArea.Value, (float)numHeightSignArea.Value);// Do something
                         }
                         else if (rdBL.Checked)
                         {
-                            rect = new iText.Kernel.Geom.Rectangle(10, 10, 200, 100);// Do something
+                            rect = new iText.Kernel.Geom.Rectangle(10, -30, (float)numWidthSignArea.Value, (float)numHeightSignArea.Value);// Do something
                         }
                         else if (rdBR.Checked)
                         {
-                            rect = new iText.Kernel.Geom.Rectangle(width - 210, 10, 200, 100);// Do something
+                            rect = new iText.Kernel.Geom.Rectangle(width - (float)numWidthSignArea.Value, -30, (float)numWidthSignArea.Value, (float)numHeightSignArea.Value);// Do something
                         }else if(int.TryParse(posPage,out pos))
                         {
-                            rect = new iText.Kernel.Geom.Rectangle(customArea.X, customArea.Y, customArea.Width, customArea.Height);
+                            rect = new iText.Kernel.Geom.Rectangle(customArea.X, height-customArea.Y- (float)numHeightSignArea.Value, (float)numWidthSignArea.Value, (float)numHeightSignArea.Value);
                         }
+                        
                         int pageIndex = 1;
                         SignerProperties signerProperties = new SignerProperties()
                             .SetFieldName(commonName)
@@ -188,14 +230,14 @@ namespace KyDienTu
                                 pageIndex = totalPages;
                                 signerProperties.SetPageNumber(pageIndex);
                             }
-                            else if (int.TryParse(posPage, out pos))
+                            else if (rdCustom.Checked && int.TryParse(posPage, out pos))
                             {
                                 signerProperties.SetPageNumber(pos);
                             }
 
                         }
 
-                        signerProperties.SetPageNumber(pageIndex);
+                        //signerProperties.SetPageNumber(pageIndex);
                         signer.SetSignerProperties(signerProperties);
                         // Specify if the appearance before field is signed will be used
                         // as a background for the signed field. The "false" value is the default value.
@@ -239,6 +281,7 @@ namespace KyDienTu
             {
                 lblSelected.Text = openFileDialog1.FileName;
                 isSelectedFile = true;
+                btnCustom.Enabled = true;
             }
         }
 
@@ -249,6 +292,7 @@ namespace KyDienTu
             {
                 lblSelected.Text = folderBrowserDialog1.SelectedPath;
                 isSelectedFile = false;
+                btnCustom.Enabled = false;
             }
         }
 
@@ -270,6 +314,25 @@ namespace KyDienTu
         {
             lblSelected.Text = "";
             lblSignedFolder.Text ="";
+            string signatureText = "";
+            if (chkName.Checked)
+            {
+                signatureText = txtName.Text + "\t" + "commonName" + "\n";
+            }
+            if (chkDate.Checked)
+            {
+                signatureText = signatureText + txtDate.Text + "\t" + DateTime.Now.ToString("dd / MM / yyyy hh: mm: ss") + "\n";
+            }
+            if (chkEmail.Checked)
+            {
+                signatureText = signatureText + txtEmail.Text + "\t" + "email";
+            }
+            Label label = new Label();
+            label.Text = signatureText;
+            label.Width = (int)numWidthSignArea.Value;
+            label.Height = (int)numHeightSignArea.Value;
+            
+           
         }
 
         private void btnSignedFolder_Click(object sender, EventArgs e)
@@ -302,15 +365,66 @@ namespace KyDienTu
         Rectangle customArea = new Rectangle();
         private void btnCustom_Click(object sender, EventArgs e)
         {
+            rdCustom.Checked = true;
             Custom customForm = new Custom();
             customForm.PDFFile = lblSelected.Text;
-            customForm.ShowDialog();
-            if (customForm.SignedArea != null)
+            customForm.SignedArea = new Rectangle(0,0,(int)numWidthSignArea.Value, (int)numHeightSignArea.Value);
+            if (customForm.ShowDialog() == DialogResult.OK)
             {
-                customArea = customForm.SignedArea;
-                posPage = customForm.SignedPage.ToString();
-                btnKyDienTu.PerformClick();
+                if (customForm.SignedArea != null)
+                {
+                    customArea = customForm.SignedArea;
+                    posPage = customForm.SignedPage.ToString();
+                    btnKyDienTu.PerformClick();
+                }
             }
+        }
+
+        private void numericUpDown1_ValueChanged(object sender, EventArgs e)
+        {
+            
+        }
+
+        private void numHeightSignArea_ValueChanged(object sender, EventArgs e)
+        {
+          
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            DigitallySignatureData signatureData = GetUsbDigitalData();
+            string signatureText = "";
+            if (chkName.Checked)
+            {
+                signatureText = txtName.Text + "" + signatureData.CommonName + "\n";
+            }
+            if (chkDate.Checked)
+            {
+                signatureText = signatureText + txtDate.Text + "" + DateTime.Now.ToString("dd/MM/yyyy hh: mm: ss") + "\n";
+            }
+            if (chkEmail.Checked)
+            {
+                signatureText = signatureText + txtEmail.Text + "" + signatureData.Email;
+            }
+            Label label = new Label();
+            label.Text = signatureText;
+            label.Width = (int)numWidthSignArea.Value;
+            label.Height = (int)numHeightSignArea.Value;
+            //richTextBox1.Size = new Size((int)numWidthSignArea.Value-10, (int)numHeightSignArea.Value+35);
+            richTextBox1.Text = signatureText;
+            richTextBox1.Font = new Font("Arial", (int)numSize.Value-1, FontStyle.Regular);
+            richTextBox1.ForeColor = pnlColor.BackColor;
+            richTextBox1.SelectAll();
+            richTextBox1.SelectionCharOffset = 2;
+            richTextBox1.Dock = DockStyle.Fill;
+            panel2.Size= new Size((int)numWidthSignArea.Value +30 , (int)numHeightSignArea.Value  );
+            panel2.Padding = new Padding(10,10,0,0);
+            
+        }
+
+        private void rdCustom_CheckedChanged(object sender, EventArgs e)
+        {
+            
         }
     }
 }
